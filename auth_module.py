@@ -14,8 +14,6 @@ class Auth_module:
         password = hashlib.sha256(salt.encode() + password.encode()).hexdigest()
 
         session = Session(self.connection.engine)
-
-        
         session.add(self.connection.User(name=salt, password=password, tg_id=None, created_tg_id = tg_id))
         session.commit()
         session.close()
@@ -33,22 +31,14 @@ class Auth_module:
         session.close()
 
         return(answer)
-        ###
-        # Сравнение хэша с БД
-        ###
 
 
-    def check_user(self, login, password, tg_id):
+    def check_user(self, login, password):
         # print(User)
         checking = self.check_hash(login, password)
 
         if (len(checking) != 0):
-            session = Session(self.connection.engine)
-            to_edit = session.query(self.connection.User).get(checking[0].id)
-            to_edit.tg_id = tg_id
-            session.add(to_edit)
-            session.commit()
-            session.close()
-            return True
+            
+            return checking[0].id
         else: 
             return False
