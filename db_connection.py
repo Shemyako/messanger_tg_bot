@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import create_engine, or_, and_, desc
+from sqlalchemy import create_engine, or_, and_, desc, text
 from sqlalchemy.ext.automap import automap_base
 
 
@@ -16,13 +16,16 @@ class Connection:
     
     def get_ten_chats(self, login, offset = 0):
         session = Session(self.engine)
-        answer = session.query(self.Message).filter(
-            or_(
-                self.Message.from_user == login,
-                self.Message.to_user == login
-            )).limit(9).offset(offset).all()
+        sql_request = text("select * from (SELECT DISTINCT ON(to_user, from_user) to_user, from_user, is_readed, id FROM messages WHERE to_user=%s OR from_user=%s ORDER BY to_user, from_user, id DESC) as foo ORDER BY id DESC" % (login, login))
+        answer = list(session.execute(sql_request))
+        # answer = session.query(self.Message).filter(
+        #     or_(
+        #         self.Message.from_user == login,
+        #         self.Message.to_user == login
+        #     )).limit(9).offset(offset).all()
         # print(answer)
         session.close()
+        # print(answer)
         return answer
     
 
@@ -107,3 +110,27 @@ class Connection:
         session.close()
         return [user.id, user.message_to_delete]
 
+    
+    def find_user_by_id(self, user_id):
+        session = Session(self.engine)
+        user = session.query(self.User).get(user_id)
+        session.close()
+        return [user.tg_id, user.message_to_delete]
+
+
+    def chat_opend(self, first_id, second_id):
+        session = Session(self.engine)
+        message = session.query(self.Message).filter(
+            self.Message.to_user == first_id,
+            self.Message.from_user == second_id,
+            self.Message.is_readed == False
+        ).order_by(
+            desc(self.Message.id)
+        ).first()
+        
+        if message is not None:
+            message.is_readed = True
+            session.add(message)
+            session.commit()
+
+        session.close()
