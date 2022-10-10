@@ -53,16 +53,19 @@ class Connection:
         tg_id = user.tg_id
         user.tg_id = None
 
+        user.login_time = None
+
         session.add(user)
         session.commit()
         session.close()
         return [tg_id, message_id, user_id]
 
     
-    def login_user(self, user_id, tg_id):
+    def login_user(self, user_id, tg_id, time):
         session = Session(self.engine)
         to_edit = session.query(self.User).get(user_id)
         to_edit.tg_id = tg_id
+        to_edit.login_time = time
         session.add(to_edit)
         session.commit()
         session.close()
@@ -102,7 +105,6 @@ class Connection:
         session.close()
         return id_from
         
-
     
     def find_user(self, tg_id):
         session = Session(self.engine)
@@ -134,3 +136,10 @@ class Connection:
             session.commit()
 
         session.close()
+
+    
+    def get_authed(self):
+        session = Session(self.engine)
+        user = session.query(self.User).filter(self.User.tg_id != None).all()
+        session.close()
+        return list(user)

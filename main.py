@@ -1,4 +1,6 @@
 import telebot
+from threading import Thread
+from time import sleep, time
 from auth_module import Auth_module
 from db_connection import Connection
 
@@ -34,6 +36,16 @@ pre_login = set()
 # Dict [body] = conv_to
 chats = {}
 
+
+#!
+def get_authed():
+    timed_authed = connection.get_authed()
+    print(timed_authed)
+    for user in timed_authed:
+        authed.add(user.tg_id)
+
+get_authed()
+print(authed)
 
 @bot.message_handler(commands=["start"])
 def start_handler(message):
@@ -187,7 +199,7 @@ def sign_in(message):
     # Create user in DB
     user_data = auth_module.create_user(message.text, message.from_user.id)
     # Send login to user. Password was sended by user
-    bot.send_message(message.from_user.id, "`" + user_data[0] + "` <- Логин", parse_mode = "Markdown") 
+    bot.send_message(message.from_user.id, "`" + user_data[0] + "` <- Логин. Обязательно выпишите себе логин и пароль, тк в целях безопасности он через какое-то время будет удалён", parse_mode = "Markdown") 
     # Remove user from pre_authed ser (he already signed in)
     pre_authed.remove(message.from_user.id)
 
@@ -223,7 +235,7 @@ def login(message):
         authed.remove(data_to_delete_message[0])
 
     # Login user in DB
-    connection.login_user(user_data, message.from_user.id)
+    connection.login_user(user_data, message.from_user.id, time())
     # Form new keyboard
     keyboard = form_keyboard(data_to_delete_message[2], message.from_user.id)
     # Send message with menu (chat list)
@@ -468,6 +480,21 @@ def form_chats(id_from, id_to):
     # Return formed keyboard
     return keyboard
 
+
+def threaded_auth_func():
+    while True:
+        sleep(600)
+        act_time = time()
+        users = connection.get_authed()
+        for user in users:
+            if user.login_time < - 3600 < act_time:
+                answer = connection.logout_user(login = user.name)
+                ###
+                bot.delete_message(answer[0], answer[1])
+                ###    
+
+th = Thread(target = threaded_auth_func)
+th.start()
 
 # Polling bot
 bot.polling()
